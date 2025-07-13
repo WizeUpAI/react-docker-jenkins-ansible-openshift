@@ -1,0 +1,51 @@
+name: Setup OpenShift Server with Jenkins and Ansible
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-server:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Install Jenkins and Ansible on remote server
+      run: |
+        ssh -o StrictHostKeyChecking=no user@your-openshift-server << 'EOF'
+          # Mise à jour
+          sudo yum update -y || sudo apt-get update -y
+
+          # Installer Java (prérequis Jenkins)
+          sudo yum install java-11-openjdk-devel -y || sudo apt-get install openjdk-11-jdk -y
+
+          # Installer Jenkins
+          sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo || \
+          sudo wget -O /etc/apt/sources.list.d/jenkins.list https://pkg.jenkins.io/debian-stable/jenkins.list
+          sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key || \
+          wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+          sudo yum install jenkins -y || sudo apt-get install jenkins -y
+          sudo systemctl enable jenkins
+          sudo systemctl start jenkins
+
+          # Installer Ansible
+          sudo yum install ansible -y || sudo apt-get install ansible -y
+
+          # (Optionnel) Installer OpenShift CLI
+          # wget https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz
+          # tar -xzf oc.tar.gz -C /usr/local/bin oc
+          # chmod +x /usr/local/bin/oc
+
+          # Vérifications
+          java -version
+          jenkins --version
+          ansible --version
+
+          exit
+        EOF
