@@ -1,0 +1,25 @@
+- name: Deploy React App Docker Image to OpenShift
+  hosts: localhost
+  vars:
+    image_name: ""
+    image_tag: ""
+    project: ""
+
+  tasks:
+    - name: Login to OpenShift
+      shell: |
+        oc whoami || oc login --token=$OPENSHIFT_TOKEN --server=$OPENSHIFT_SERVER
+      environment:
+        KUBECONFIG: "{{ lookup('env', 'KUBECONFIG') }}"
+
+    - name: Switch to project
+      shell: oc project {{ project }}
+
+    - name: Deploy or update app in OpenShift
+      shell: |
+        if ! oc get dc react-app; then
+          oc new-app --docker-image={{ image_name }}:{{ image_tag }} --name=react-app
+        else
+          oc set image dc/react-app react-app={{ image_name }}:{{ image_tag }}
+          oc rollout restart dc/react-app
+        fi
